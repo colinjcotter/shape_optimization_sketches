@@ -5,6 +5,7 @@ continue_annotation()
 
 # Mesh of rectangle with circle in the middle. Circle tagged with 11, Horizontal edged of rectangle
 # tagged with 9 and vertical with 10
+# gmsh -2 1.geo -format msh2
 mesh = Mesh('1.msh')
 
 S = FunctionSpace(mesh, "DG", 0)
