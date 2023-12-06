@@ -53,7 +53,7 @@ for i in range(10):
 c = 1/2 * I + 1/2
 bcs = [DirichletBC(T, 1, [9]), DirichletBC(T, 0, [10])]
 
-# Not sure what this is?
+# shape dependent equation
 psi = TestFunction(T)
 a = inner(Jit * grad(psi), Jit * grad(w)) * c * det(J) * dx
 solve(a == 0, w, bcs=bcs)
