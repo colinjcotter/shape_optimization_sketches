@@ -21,7 +21,6 @@ normal = I("+")*n("+") + I("-")*n("-")
 
 v = TestFunction(V)
 u = TrialFunction(V)
-w = Function(T, name="w")
 
 # reparametrisation to not have to move the mesh
 dphi = Function(V, name="dphi")
@@ -34,22 +33,23 @@ p0 = Function(T)
 J = grad(phi)
 Jit = inv(J.T)
 
-# setup equations to solve for u
+# setup equations to solve for time dependent mesh velocity
 a = (inner(u, v) + inner(Jit * grad(v), Jit * grad(u))) * det(J) * dx
 L = inner(Jit("+") * normal, p0("+") * v("+")) * dS(11)
 bcs = [DirichletBC(V, Constant((0,0)), "on_boundary")]
 u0 = Function(V, name="u0")
 
-# Functional to minimise -> need better one
-f = (x[0]+dphi[0]-0.5)**2 + (x[1]+dphi[1]+4)**2 - 0.7
-functional = f*I*det(J)*dx
-
-# Solve for u save into u0, here we append a cost (of u0) to our function 
-dt = 1/10
-for i in range(10):
+# mesh movement equation
+nstep = 100
+dt = 1/nstep
+for i in range(nstep):
     solve(a == L, u0, bcs=bcs)
-    dphi += dt * u0
+    dphi.interpolate(dphi + dt * u0)
 
+# Functional to minimise -> need better one
+f = (x[0]+dphi[0]-5)**2 + (x[1]+dphi[1]+4)**2 - 0.5
+functional = f*I*det(J)*dx
+    
 # Setup for plugging into adjoint optmizer to reduce functional over p0
 J = assemble(functional)
 m = Control(p0)
@@ -57,9 +57,22 @@ Jhat = ReducedFunctional(J, m)
 
 # optimise
 get_working_tape().progress_bar = ProgressBar
-p0_opt = minimize(Jhat)
-print(p0_opt.dat.data)
+p0_opt = minimize(Jhat, options={"disp":True})
+print(p0_opt.dat.data.max(),
+      p0_opt.dat.data.min())
 
-# save outputs
+stop_annotating()
+
+p0.assign(p0_opt)
+
 out = File("minp0.pvd")
-out.write(w, I, dphi)
+out.write(w, I, dphi, p0)
+
+meshC0 = mesh.coordinates.copy(deepcopy=True)
+
+for i in range(nstep):
+    solve(a == L, u0, bcs=bcs)
+    dphi.interpolate(dphi + dt * u0)
+    mesh.coordinates.assign(mesh.coordinates+dphi)
+    # save outputs
+    mesh.coordinates.assign(meshC0)
