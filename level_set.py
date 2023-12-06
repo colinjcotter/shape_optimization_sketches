@@ -41,24 +41,14 @@ bcs = [DirichletBC(V, Constant((0,0)), "on_boundary")]
 u0 = Function(V, name="u0")
 
 # Functional to minimise -> need better one
-functional = (1-I)*1./2*inner(Jit * grad(w), Jit * grad(w)) * det(J) * dx
-functional = inner(x,x)*dx
+f = (x[0]+dphi[0]-0.5)**2 + (x[1]+dphi[1]+4)**2 - 0.7
+functional = f*I*det(J)*dx
 
 # Solve for u save into u0, here we append a cost (of u0) to our function 
 dt = 1/10
 for i in range(10):
     solve(a == L, u0, bcs=bcs)
-    functional += Constant(dt/100) * (inner(u0, u0) + inner(Jit * grad(u0), Jit * grad(u0))) * det(J) * dx
     dphi += dt * u0
-
-# boundary conditions on edges of rectangle
-bcs = [DirichletBC(T, 1, [9]), DirichletBC(T, 0, [10])]
-
-# shape dependent equation
-psi = TestFunction(T)
-c = 100 * I + 1
-a = (psi*w + inner(Jit * grad(psi), Jit * grad(w))) * c * det(J) * dx
-solve(a == 0, w, bcs=bcs)
 
 # Setup for plugging into adjoint optmizer to reduce functional over p0
 J = assemble(functional)
